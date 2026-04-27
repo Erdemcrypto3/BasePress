@@ -1,0 +1,20 @@
+{
+  "name": "@basepress/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:base": "hardhat run scripts/deploy.js --network base",
+    "deploy:ink": "hardhat run scripts/deploy.js --network ink",
+    "lint": "echo 'no lint'",
+    "clean": "rm -rf artifacts cache typechain-types"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.1.0",
+    "@openzeppelin/contracts-upgradeable": "^5.1.0",
+    "@openzeppelin/hardhat-upgrades": "^3.5.0",
+    "hardhat": "^2.22.0"
+  }
+}

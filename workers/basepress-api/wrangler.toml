@@ -1,0 +1,29 @@
+name = "basepress-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Routes wired after domain is registered (basepress.xyz pending).
+# routes = [
+#   { pattern = "api.basepress.xyz", custom_domain = true }
+# ]
+
+# Article body + cover image storage. Single bucket, chain-agnostic.
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "basepress-storage"
+
+# SIWE session tokens (5-minute TTL).
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "<TODO: create with `wrangler kv:namespace create SESSIONS`>"
+
+# Article + permit registry. Each article: key=articleId, value={metadata, permit, signature}.
+[[kv_namespaces]]
+binding = "ARTICLES"
+id = "<TODO: create with `wrangler kv:namespace create ARTICLES`>"
+
+[vars]
+ALLOWED_ORIGIN = "https://basepress.xyz"
+# Comma-separated lowercase 0x-addresses authorized to publish.
+ADMIN_ADDRESSES = "0x9e84d77264d94c646df91a70dbae99c20330ead0"

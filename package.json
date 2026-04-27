@@ -1,0 +1,20 @@
+{
+  "name": "basepress",
+  "version": "0.1.0",
+  "private": true,
+  "description": "BasePress — multichain decentralized blog. Off-chain publish, on-chain mint via EIP-712 permits.",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3"
+  },
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  }
+}
