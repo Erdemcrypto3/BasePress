@@ -4,6 +4,20 @@ import { requireAdmin } from './auth';
 
 export const articleRoutes = new Hono<{ Bindings: Env }>();
 
+type ArticleSignature = {
+  chainId: number;
+  signature: `0x${string}`;
+};
+
+type StoredPermit = {
+  articleId: `0x${string}`;
+  contentURI: string;
+  author: `0x${string}`;
+  price: string;       // wei as decimal string
+  maxSupply: string;
+  deadline: number;
+};
+
 type StoredArticle = {
   articleId: `0x${string}`;
   slug: string;
@@ -13,9 +27,9 @@ type StoredArticle = {
   tags: string[];
   author: `0x${string}`;
   publishedAt: number;
-  contentKey: string;          // R2 object key for the body
-  permit: unknown;             // MintPermit (bytes32 articleId, string contentURI, address author, uint256 price, uint256 maxSupply, uint256 deadline)
-  signature: `0x${string}`;
+  contentKey: string;
+  permit: StoredPermit;
+  signatures: ArticleSignature[];
 };
 
 // ----- Public list -----
@@ -49,15 +63,25 @@ articleRoutes.post('/', async (c) => {
     body: string;
     tags: string[];
     coverImage?: string;
-    permit: { articleId: `0x${string}`; author: `0x${string}` } & Record<string, unknown>;
-    signature: `0x${string}`;
+    permit: StoredPermit;
+    signatures: ArticleSignature[];
   }>();
 
-  // Body sanitization is the publisher's responsibility (they sign the permit
-  // referencing the contentURI we return). Worker stores verbatim.
-  const articleId = payload.permit.articleId;
+  const articleId = payload.permit?.articleId;
   if (!/^0x[a-f0-9]{64}$/i.test(articleId)) return c.json({ error: 'bad articleId' }, 400);
+  if (payload.permit.author.toLowerCase() !== admin.toLowerCase()) {
+    return c.json({ error: 'permit.author must equal SIWE admin address' }, 400);
+  }
+  if (!Array.isArray(payload.signatures) || payload.signatures.length === 0) {
+    return c.json({ error: 'at least one chain signature required' }, 400);
+  }
+  for (const s of payload.signatures) {
+    if (typeof s.chainId !== 'number') return c.json({ error: 'bad chainId' }, 400);
+    if (!/^0x[a-f0-9]+$/i.test(s.signature)) return c.json({ error: 'bad signature' }, 400);
+  }
 
+  // Body sanitization is the publisher's responsibility (they sign a permit
+  // tied to articleId, not body content). Worker stores verbatim.
   const contentKey = `articles/${articleId}/body.html`;
   await c.env.STORAGE.put(contentKey, payload.body, {
     httpMetadata: { contentType: 'text/html; charset=utf-8' },
@@ -74,7 +98,7 @@ articleRoutes.post('/', async (c) => {
     publishedAt: Math.floor(Date.now() / 1000),
     contentKey,
     permit: payload.permit,
-    signature: payload.signature,
+    signatures: payload.signatures,
   };
   await c.env.ARTICLES.put(`article:${articleId}`, JSON.stringify(stored));
 

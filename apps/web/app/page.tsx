@@ -1,16 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  BasePressWalletProvider,
-  ConnectButton,
-  useAccount,
-  useChainId,
-} from '@basepress/wallet';
+import { ConnectButton, useAccount, useChainId } from '@basepress/wallet';
 import { SUPPORTED_CHAINS } from '@basepress/chain';
 import { isAdminAddress } from './lib/admin';
 import { fetchArticles, type ArticleListItem } from './lib/api';
 import { getContractAddress } from './lib/contract';
+import { ClientWalletProvider } from './components/WalletProviderClient';
 
 function Header() {
   const { address, isConnected } = useAccount();
@@ -37,7 +33,17 @@ function Header() {
           </span>
         )}
       </div>
-      <ConnectButton showBalance={false} />
+      <div className="flex flex-col items-end gap-2">
+        <ConnectButton showBalance={false} />
+        {isAdmin && (
+          <a
+            href="/admin"
+            className="rounded-md bg-base-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-base-600"
+          >
+            Admin →
+          </a>
+        )}
+      </div>
     </header>
   );
 }
@@ -106,21 +112,41 @@ function ArticleFeed() {
   return (
     <div className="space-y-3">
       {articles.map((a) => (
-        <article
+        <a
           key={a.articleId}
-          className="rounded-xl bg-white p-5 ring-1 ring-inset ring-base-100 shadow-sm"
+          href={`/article/?id=${a.articleId}`}
+          className="block rounded-xl bg-white p-5 ring-1 ring-inset ring-base-100 shadow-sm transition hover:ring-base-300"
         >
-          <h3 className="text-lg font-semibold text-base-900">{a.title}</h3>
-          {a.description && (
-            <p className="mt-1 text-sm text-base-700">{a.description}</p>
-          )}
-          <div className="mt-2 flex items-center gap-3 text-xs text-base-500">
-            <span className="font-mono">
-              {a.author.slice(0, 6)}...{a.author.slice(-4)}
-            </span>
-            <span>{new Date(a.publishedAt * 1000).toLocaleDateString()}</span>
+          <div className="flex gap-4">
+            {a.coverImage && (
+              <img
+                src={a.coverImage}
+                alt=""
+                className="h-20 w-20 flex-none rounded-md object-cover ring-1 ring-inset ring-base-100"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <h3 className="text-lg font-semibold text-base-900">{a.title}</h3>
+              {a.description && (
+                <p className="mt-1 text-sm text-base-700 line-clamp-2">{a.description}</p>
+              )}
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-base-500">
+                <span className="font-mono">
+                  {a.author.slice(0, 6)}...{a.author.slice(-4)}
+                </span>
+                <span>{new Date(a.publishedAt * 1000).toLocaleDateString()}</span>
+                {a.tags.slice(0, 3).map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full bg-base-50 px-2 py-0.5 text-[10px] uppercase tracking-wider text-base-700 ring-1 ring-inset ring-base-100"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </article>
+        </a>
       ))}
     </div>
   );
@@ -141,8 +167,8 @@ function HomeContent() {
 
 export default function HomePage() {
   return (
-    <BasePressWalletProvider>
+    <ClientWalletProvider>
       <HomeContent />
-    </BasePressWalletProvider>
+    </ClientWalletProvider>
   );
 }

@@ -9,6 +9,7 @@ dist
 build
 .turbo
 .tsbuildinfo
+*.tsbuildinfo
 artifacts
 cache
 typechain-types
