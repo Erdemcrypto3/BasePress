@@ -7,7 +7,7 @@ async function main() {
   const platformTreasury = process.env.PLATFORM_TREASURY || deployer.address;
   const platformFeeBps = parseInt(process.env.PLATFORM_FEE_BPS || '500', 10); // 5%
   const blogName = process.env.BLOG_NAME || 'BasePress';
-  const baseUri = process.env.BASE_URI || 'https://api.basepress.xyz/metadata/{id}';
+  const baseUri = process.env.BASE_URI || 'https://api.basepress.app/metadata/{id}';
 
   console.log(`\nDeploying BasePress to ${network.name} (chainId ${network.config.chainId})`);
   console.log(`  deployer:        ${deployer.address}`);

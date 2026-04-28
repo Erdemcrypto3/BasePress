@@ -13,7 +13,7 @@ export function getContractAddress(chainId: number): Address | null {
 }
 
 // Off-chain API base. Same domain across chains — articles are chain-agnostic.
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.basepress.xyz';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.basepress.app';
 
 // ===== EIP-712 typed data shape for off-chain article permits =====
 // Author signs once per article; the permit is stored on the API and replayed

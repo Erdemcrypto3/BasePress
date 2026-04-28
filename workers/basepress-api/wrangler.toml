@@ -3,9 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Routes wired after domain is registered (basepress.xyz pending).
+# Routes wired after domain registers in Cloudflare DNS.
 # routes = [
-#   { pattern = "api.basepress.xyz", custom_domain = true }
+#   { pattern = "api.basepress.app", custom_domain = true }
 # ]
 
 # Article body + cover image storage. Single bucket, chain-agnostic.
@@ -24,6 +24,6 @@ binding = "ARTICLES"
 id = "<TODO: create with `wrangler kv:namespace create ARTICLES`>"
 
 [vars]
-ALLOWED_ORIGIN = "https://basepress.xyz"
+ALLOWED_ORIGIN = "https://basepress.app"
 # Comma-separated lowercase 0x-addresses authorized to publish.
 ADMIN_ADDRESSES = "0x9e84d77264d94c646df91a70dbae99c20330ead0"

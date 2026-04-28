@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'BasePress',
     description: 'Multichain decentralized blog. Read free, mint anywhere.',
-    url: 'https://basepress.xyz',
+    url: 'https://basepress.app',
     siteName: 'BasePress',
     type: 'website',
   },
