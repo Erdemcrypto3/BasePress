@@ -4,8 +4,8 @@ import { base, ink, type SupportedChainId } from '@basepress/chain';
 // Contract address per chain. Filled in after deploy.
 // New chain? Deploy BasePress.sol there + add an entry here.
 export const CONTRACT_ADDRESSES: Record<SupportedChainId, Address | null> = {
-  [base.id]: null, // TODO: deploy V2 to Base
-  [ink.id]: null,  // TODO: deploy V2 to Ink
+  [base.id]: '0xAdf3d339B1030ac84fa56430C6a86455fBCEA5cd', // V2 deployed 2026-04-28
+  [ink.id]: '0xcaf3D13E55fc7c62c1fea07dcD3FbA0D682080Ab',  // V2 deployed 2026-04-28
 };
 
 export function getContractAddress(chainId: number): Address | null {

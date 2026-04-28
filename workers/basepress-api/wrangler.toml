@@ -3,10 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Routes wired after domain registers in Cloudflare DNS.
-# routes = [
-#   { pattern = "api.basepress.app", custom_domain = true }
-# ]
+routes = [
+  { pattern = "api.basepress.app", custom_domain = true }
+]
 
 # Article body + cover image storage. Single bucket, chain-agnostic.
 [[r2_buckets]]
@@ -16,12 +15,12 @@ bucket_name = "basepress-storage"
 # SIWE session tokens (5-minute TTL).
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "<TODO: create with `wrangler kv:namespace create SESSIONS`>"
+id = "db793c4227af420b823fcd0fe5c52803"
 
 # Article + permit registry. Each article: key=articleId, value={metadata, permit, signature}.
 [[kv_namespaces]]
 binding = "ARTICLES"
-id = "<TODO: create with `wrangler kv:namespace create ARTICLES`>"
+id = "61be3e92b8284ee285be38fd4337df05"
 
 [vars]
 ALLOWED_ORIGIN = "https://basepress.app"
