@@ -26,9 +26,25 @@ fileRoutes.get('/*', async (c) => {
   return new Response(obj.body, { headers });
 });
 
-// Admin cover-image upload. Content-Type drives the stored MIME and extension.
+// PAI-0012: magic byte signatures per image type
+const MAGIC_BYTES: Record<string, number[][]> = {
+  'image/png': [[0x89, 0x50, 0x4e, 0x47]],
+  'image/jpeg': [[0xff, 0xd8, 0xff]],
+  'image/webp': [[0x52, 0x49, 0x46, 0x46]], // RIFF header
+  'image/gif': [[0x47, 0x49, 0x46, 0x38]],  // GIF8
+};
+
+function matchesMagicBytes(data: ArrayBuffer, contentType: string): boolean {
+  const signatures = MAGIC_BYTES[contentType];
+  if (!signatures) return false;
+  const bytes = new Uint8Array(data);
+  return signatures.some((sig) =>
+    sig.every((b, i) => i < bytes.length && bytes[i] === b),
+  );
+}
+
 fileRoutes.post('/cover', async (c) => {
-  const admin = await requireAdmin(c.env, c.req.header('Authorization'));
+  const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
 
   const ct = (c.req.header('Content-Type') || '').toLowerCase().split(';')[0].trim();
@@ -40,6 +56,10 @@ fileRoutes.post('/cover', async (c) => {
   if (body.byteLength === 0) return c.json({ error: 'empty body' }, 400);
   if (body.byteLength > MAX_COVER_BYTES) {
     return c.json({ error: `cover too large (max ${MAX_COVER_BYTES} bytes)` }, 413);
+  }
+
+  if (!matchesMagicBytes(body, ct)) {
+    return c.json({ error: 'file content does not match declared Content-Type' }, 415);
   }
 
   const ext = ct.split('/')[1] || 'bin';

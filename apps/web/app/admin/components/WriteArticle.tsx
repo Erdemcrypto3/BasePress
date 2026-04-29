@@ -56,6 +56,7 @@ export function WriteArticle({ session, onPublished }: Props) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -357,7 +358,7 @@ export function WriteArticle({ session, onPublished }: Props) {
           <button
             type="button"
             disabled={busy}
-            onClick={handlePublish}
+            onClick={() => setShowConfirm(true)}
             className="rounded-md bg-base-500 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-base-600 disabled:opacity-50"
           >
             {busy ? 'Working…' : 'Sign & publish'}
@@ -365,6 +366,37 @@ export function WriteArticle({ session, onPublished }: Props) {
         </div>
         {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="mx-4 max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-base font-semibold text-base-900">Confirm publish</h3>
+            <p className="mt-2 text-sm text-base-600">
+              Once published, this article is <strong>permanent</strong>. You cannot edit or
+              delete it. To publish a revised version you must use a new slug.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="rounded-md px-3 py-1.5 text-sm font-medium text-base-600 ring-1 ring-inset ring-base-200 hover:bg-base-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirm(false);
+                  handlePublish();
+                }}
+                className="rounded-md bg-base-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-base-600"
+              >
+                Publish permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
