@@ -4,6 +4,44 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAccount, useSignMessage } from '@basepress/wallet';
 import { siweNonce, siweVerify, type SiweSession } from './api';
 
+const STORAGE_KEY = 'basepress:siwe';
+
+// Persist the SIWE session across page reloads. Token already has a Worker-side
+// TTL (PAI-0004); localStorage is a UX cache, not a security boundary.
+export function loadSession(): SiweSession | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as SiweSession;
+    if (s.expiresAt * 1000 <= Date.now()) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(s: SiweSession) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  } catch {
+    /* quota or disabled storage — silent */
+  }
+}
+
+function clearSession() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* silent */
+  }
+}
+
 export type SiweState = {
   session: SiweSession | null;
   busy: boolean;
@@ -21,21 +59,32 @@ export function useSiweSession(): SiweState {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Hydrate from localStorage on mount.
+  useEffect(() => {
+    const s = loadSession();
+    if (s) setSession(s);
+  }, []);
+
   // Drop the session whenever the connected wallet changes.
   useEffect(() => {
     setSession(null);
     setError(null);
+    clearSession();
   }, [address]);
 
-  // Auto-clear when the session expires (Worker enforces 5-min TTL anyway).
+  // Auto-clear when the session expires.
   useEffect(() => {
     if (!session) return;
     const ms = session.expiresAt * 1000 - Date.now();
     if (ms <= 0) {
       setSession(null);
+      clearSession();
       return;
     }
-    const t = setTimeout(() => setSession(null), ms);
+    const t = setTimeout(() => {
+      setSession(null);
+      clearSession();
+    }, ms);
     return () => clearTimeout(t);
   }, [session]);
 
@@ -48,6 +97,7 @@ export function useSiweSession(): SiweState {
       const signature = await signMessageAsync({ message });
       const s = await siweVerify(message, signature);
       setSession(s);
+      saveSession(s);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
@@ -59,6 +109,7 @@ export function useSiweSession(): SiweState {
   const signOut = useCallback(() => {
     setSession(null);
     setError(null);
+    clearSession();
   }, []);
 
   return {
