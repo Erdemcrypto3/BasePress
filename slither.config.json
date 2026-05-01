@@ -1,0 +1,4 @@
+{
+  "filter_paths": "node_modules|contracts/mocks",
+  "detectors_to_exclude": "arbitrary-send-eth"
+}
