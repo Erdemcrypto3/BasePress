@@ -11,7 +11,7 @@ Multichain decentralized blog. Authors publish off-chain (Cloudflare R2), reader
 
 ### Why off-chain publish?
 
-Authors don't pay gas to publish. The same article is mintable on every supported chain without re-publishing. Authors sign EIP-712 permits off-chain; the contract verifies the signature at mint time. See [docs/architecture.md](./docs/architecture.md).
+Authors don't pay gas to publish. The same article is mintable on every supported chain without re-publishing — authors sign one EIP-712 permit **per chain** (the EIP-712 domain binds each signature to a specific `chainId` and `verifyingContract`, so signatures are not cross-chain replayable). The contract verifies the signature at mint time. See [docs/architecture.md](./docs/architecture.md).
 
 ## Stack
 

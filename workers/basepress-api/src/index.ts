@@ -3,14 +3,21 @@ import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { authRoutes } from './routes/auth';
 import { articleRoutes } from './routes/articles';
+import { draftRoutes } from './routes/drafts';
+import { tagRoutes } from './routes/tags';
 import { fileRoutes } from './routes/files';
+import { adminRoutes } from './routes/admins';
 
 export type Env = {
   STORAGE: R2Bucket;
   SESSIONS: KVNamespace;
   ARTICLES: KVNamespace;
+  DRAFTS: KVNamespace;
   ALLOWED_ORIGIN: string;
   ADMIN_ADDRESSES: string;
+  // PAI-0017: address that should recover from every signed MintPermit. Set in
+  // wrangler.toml [vars] and rotated when the on-chain platformSigner rotates.
+  PLATFORM_SIGNER: string;
 };
 
 const app = new Hono<{ Bindings: Env }>();
@@ -44,7 +51,7 @@ app.use(
   '*',
   cors({
     origin: (origin, c) => c.env.ALLOWED_ORIGIN,
-    allowMethods: ['GET', 'POST', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 600,
   }),
@@ -54,6 +61,9 @@ app.get('/', (c) => c.json({ name: 'basepress-api', version: '0.2.0' }));
 
 app.route('/auth', authRoutes);
 app.route('/articles', articleRoutes);
+app.route('/drafts', draftRoutes);
+app.route('/tags', tagRoutes);
 app.route('/file', fileRoutes);
+app.route('/admins', adminRoutes);
 
 export default app;

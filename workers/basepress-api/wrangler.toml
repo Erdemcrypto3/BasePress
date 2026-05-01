@@ -22,7 +22,15 @@ id = "db793c4227af420b823fcd0fe5c52803"
 binding = "ARTICLES"
 id = "61be3e92b8284ee285be38fd4337df05"
 
+# Admin draft auto-save (50-draft quota per author, 5s client debounce).
+[[kv_namespaces]]
+binding = "DRAFTS"
+id = "9c7edbfef19242c6836c4edb5b9f3ffa"
+
 [vars]
 ALLOWED_ORIGIN = "https://basepress.app"
 # Comma-separated lowercase 0x-addresses authorized to publish.
 ADMIN_ADDRESSES = "0x9e84d77264d94c646df91a70dbae99c20330ead0"
+# PAI-0017: EIP-712 signed permits at /articles publish must recover to this address.
+# Rotate together with the on-chain platformSigner whenever it changes.
+PLATFORM_SIGNER = "0x9e84d77264d94c646df91a70dbae99c20330ead0"

@@ -1,0 +1,77 @@
+# PAI-0028: CI security gates — Azure DevOps mirror of .github/workflows/security.yml.
+# Keep both in sync.
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+- stage: security
+  jobs:
+
+  - job: pnpm_audit
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '20.x'
+    - script: |
+        npm install -g pnpm@10.33.0
+        pnpm install --frozen-lockfile
+        pnpm audit --audit-level=high --prod
+      displayName: 'pnpm audit (fail high/critical)'
+
+  - job: slither
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '20.x'
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.11'
+    - script: |
+        pip install slither-analyzer
+        cd contracts
+        npm ci
+        slither contracts/ --fail-high --filter-paths node_modules
+      displayName: 'slither static analysis'
+
+  - job: gitleaks
+    steps:
+    - checkout: self
+      fetchDepth: 0
+    - script: |
+        curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz \
+          | tar -xz -C /tmp gitleaks
+        /tmp/gitleaks detect --source . --redact --no-banner --exit-code 1
+      displayName: 'gitleaks secret scan'
+
+  - job: contract_coverage
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '20.x'
+    - script: |
+        cd contracts
+        npm ci
+        npx hardhat coverage
+      displayName: 'hardhat coverage'
+    - script: |
+        cd contracts
+        node -e "
+        const c = require('./coverage/coverage-summary.json').total;
+        const min = 90;
+        for (const k of ['statements','branches','functions','lines']) {
+          if (c[k].pct < min) {
+            console.error('coverage below threshold:', k, c[k].pct, '<', min);
+            process.exit(1);
+          }
+        }
+        console.log('coverage ok');
+        "
+      displayName: 'enforce coverage threshold (90%)'
