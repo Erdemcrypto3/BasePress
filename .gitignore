@@ -39,3 +39,7 @@ pnpm-debug.log*
 
 # hardhat
 deployments/localhost
+
+# coverage (hardhat solidity-coverage outputs)
+coverage
+coverage.json
