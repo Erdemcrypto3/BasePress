@@ -35,9 +35,9 @@ stages:
       inputs:
         versionSpec: '3.11'
     - script: |
+        npm install -g pnpm@10.33.0
+        pnpm install --frozen-lockfile
         pip install slither-analyzer
-        cd contracts
-        npm ci
         slither contracts/ --fail-high --filter-paths node_modules
       displayName: 'slither static analysis'
 
@@ -57,9 +57,10 @@ stages:
       inputs:
         versionSpec: '20.x'
     - script: |
+        npm install -g pnpm@10.33.0
+        pnpm install --frozen-lockfile
         cd contracts
-        npm ci
-        npx hardhat coverage
+        pnpm exec hardhat coverage
       displayName: 'hardhat coverage'
     - script: |
         cd contracts

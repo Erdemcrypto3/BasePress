@@ -25,25 +25,23 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      # Fail on high/critical, surface moderate as a warning in the log.
       - run: pnpm audit --audit-level=high --prod
 
   slither:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: contracts
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'pnpm'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: install hardhat deps
-        working-directory: contracts
-        run: npm ci
+      - run: pnpm install --frozen-lockfile
       - uses: crytic/slither-action@v0.4.0
         id: slither
         with:
@@ -69,17 +67,20 @@ jobs:
 
   contract-coverage:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: contracts
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm ci
-      - run: npx hardhat coverage
-      - name: enforce coverage threshold
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - working-directory: contracts
+        run: pnpm exec hardhat coverage
+      - working-directory: contracts
+        name: enforce coverage threshold
         run: |
           # Fail if statements/branches/functions/lines below 90%.
           node -e "
