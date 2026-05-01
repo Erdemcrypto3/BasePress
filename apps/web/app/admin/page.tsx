@@ -7,10 +7,11 @@ import { useSiweSession } from '../lib/siwe';
 import { WriteArticle } from './components/WriteArticle';
 import { AdminDashboard } from './components/AdminDashboard';
 import { WithdrawPanel } from './components/WithdrawPanel';
+import { TagManager } from './components/TagManager';
 
 export default function AdminPage() {
   const { session, busy, error, isConnected, address, signIn, signOut } = useSiweSession();
-  const [tab, setTab] = useState<'write' | 'list' | 'withdraw'>('write');
+  const [tab, setTab] = useState<'write' | 'list' | 'tags' | 'withdraw'>('write');
   const [refreshKey, setRefreshKey] = useState(0);
 
   const isAdmin = isAdminAddress(address);
@@ -52,7 +53,7 @@ export default function AdminPage() {
             <div>
               <h2 className="text-base font-semibold text-base-900">Sign in</h2>
               <p className="mt-1 text-xs text-base-500">
-                Sign a SIWE message so the API trusts your publish requests for the next 5 minutes.
+                Sign a SIWE message so the API trusts your publish requests for the next hour.
               </p>
             </div>
             <button
@@ -91,6 +92,9 @@ export default function AdminPage() {
             <TabButton active={tab === 'list'} onClick={() => setTab('list')}>
               Published
             </TabButton>
+            <TabButton active={tab === 'tags'} onClick={() => setTab('tags')}>
+              Tags
+            </TabButton>
             <TabButton active={tab === 'withdraw'} onClick={() => setTab('withdraw')}>
               Withdraw
             </TabButton>
@@ -105,7 +109,8 @@ export default function AdminPage() {
               }}
             />
           )}
-          {tab === 'list' && <AdminDashboard refreshKey={refreshKey} />}
+          {tab === 'list' && <AdminDashboard refreshKey={refreshKey} session={session} />}
+          {tab === 'tags' && <TagManager session={session} />}
           {tab === 'withdraw' && <WithdrawPanel />}
         </>
       )}

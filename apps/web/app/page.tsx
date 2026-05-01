@@ -13,72 +13,95 @@ function Header() {
   const isAdmin = isAdminAddress(address);
 
   return (
-    <header className="mb-10 flex items-start justify-between gap-4">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-base-900 sm:text-4xl">
-          BasePress
-        </h1>
-        <p className="mt-2 text-sm text-base-700">
-          Multichain decentralized blog. Read free, mint on any chain.
-        </p>
-        {isConnected && (
-          <span
-            className={`mt-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
-              isAdmin
-                ? 'bg-emerald-100 text-emerald-700 ring-emerald-300'
-                : 'bg-base-100 text-base-700 ring-base-200'
-            }`}
-          >
-            {isAdmin ? 'Admin' : 'Reader'}
-          </span>
-        )}
+    <header className="mb-10">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight text-base-900 sm:text-4xl">
+            BasePress
+          </h1>
+          {isConnected && (
+            <span
+              className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${
+                isAdmin
+                  ? 'bg-emerald-100 text-emerald-700 ring-emerald-300'
+                  : 'bg-base-100 text-base-700 ring-base-200'
+              }`}
+            >
+              {isAdmin ? 'Admin' : 'Reader'}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <ConnectButton showBalance={false} />
+          {isAdmin && (
+            <a
+              href="/admin"
+              className="rounded-md bg-base-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-base-600"
+            >
+              Admin →
+            </a>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col items-end gap-2">
-        <ConnectButton showBalance={false} />
-        {isAdmin && (
-          <a
-            href="/admin"
-            className="rounded-md bg-base-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-base-600"
-          >
-            Admin →
-          </a>
-        )}
-      </div>
+      <p className="mt-4 max-w-lg text-base text-base-600">
+        Decentralized articles on Base &amp; Ink. Authors publish off-chain with EIP-712
+        permits — readers collect on whichever chain they prefer. No gas to publish, no
+        platform lock-in.
+      </p>
     </header>
   );
 }
 
-function ChainSummary() {
+function NetworkDetails() {
   const chainId = useChainId();
   const active = SUPPORTED_CHAINS.find((c) => c.id === chainId);
   const contract = active ? getContractAddress(active.id) : null;
 
   return (
-    <div className="mb-8 rounded-xl bg-white p-5 ring-1 ring-inset ring-base-100 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-wider text-base-500">
-        Active chain
-      </div>
-      <div className="mt-1 text-base-900">
-        {active ? `${active.name} (${active.id})` : 'Unsupported chain — switch in wallet'}
-      </div>
-      {active && (
-        <div className="mt-2 text-xs text-base-500">
-          Contract:{' '}
-          {contract ? (
-            <a
-              href={`${active.blockExplorers.default.url}/address/${contract}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono underline hover:text-base-700"
-            >
-              {contract.slice(0, 10)}...{contract.slice(-8)}
-            </a>
-          ) : (
-            <span className="text-amber-600">not yet deployed</span>
-          )}
+    <details className="mb-8 rounded-xl bg-white ring-1 ring-inset ring-base-100 shadow-sm">
+      <summary className="cursor-pointer select-none px-5 py-4 text-xs font-semibold uppercase tracking-wider text-base-500 hover:text-base-700">
+        Network &amp; contracts
+      </summary>
+      <div className="border-t border-base-100 px-5 py-4 text-sm">
+        <div className="text-base-900">
+          {active ? `${active.name} (${active.id})` : 'Unsupported chain — switch in wallet'}
         </div>
-      )}
-    </div>
+        {active && (
+          <div className="mt-2 text-xs text-base-500">
+            Contract:{' '}
+            {contract ? (
+              <a
+                href={`${active.blockExplorers.default.url}/address/${contract}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono underline hover:text-base-700"
+              >
+                {contract.slice(0, 10)}...{contract.slice(-8)}
+              </a>
+            ) : (
+              <span className="text-amber-600">not yet deployed</span>
+            )}
+          </div>
+        )}
+        <div className="mt-3 flex flex-wrap gap-3 text-xs">
+          {SUPPORTED_CHAINS.map((c) => {
+            const addr = getContractAddress(c.id);
+            if (!addr) return null;
+            return (
+              <a
+                key={c.id}
+                href={`${c.blockExplorers.default.url}/address/${addr}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-base-500 underline hover:text-base-700"
+              >
+                {c.name} contract
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -156,12 +179,53 @@ function HomeContent() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-10 sm:py-16">
       <Header />
-      <ChainSummary />
+      <NetworkDetails />
       <ArticleFeed />
-      <footer className="mt-16 border-t border-base-100 pt-8 text-xs text-base-500">
-        BasePress · multichain by design · MIT license
-      </footer>
+      <Footer />
     </main>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="mt-16 border-t border-base-100 pt-8 pb-6">
+      <div className="flex flex-wrap items-start justify-between gap-6 text-xs text-base-500">
+        <div className="space-y-2">
+          <p className="font-medium text-base-700">BasePress</p>
+          <p>Multichain decentralized blog · MIT license</p>
+          <div className="flex flex-wrap gap-3">
+            {SUPPORTED_CHAINS.map((c) => {
+              const addr = getContractAddress(c.id);
+              if (!addr) return null;
+              return (
+                <a
+                  key={c.id}
+                  href={`${c.blockExplorers.default.url}/address/${addr}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-base-700"
+                >
+                  {c.name}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <a
+            href="https://github.com/Erdemcrypto3/BasePress"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md bg-base-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-base-700"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z" />
+            </svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+    </footer>
   );
 }
 
