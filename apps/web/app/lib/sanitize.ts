@@ -1,18 +1,38 @@
 import DOMPurify from 'isomorphic-dompurify';
+import {
+  ALLOWED_TAGS,
+  ALLOWED_ATTRIBUTES_FLAT,
+  ALLOWED_URI_REGEXP,
+} from '@basepress/sanitizer';
 
-const ALLOWED_TAGS = [
-  'p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre',
-  'blockquote', 'ul', 'ol', 'li',
-  'h1', 'h2', 'h3', 'h4',
-  'a', 'img', 'hr',
-];
+let hookInstalled = false;
+function ensureHook() {
+  if (hookInstalled) return;
+  // PAI-0024: enforce rel="noopener noreferrer" on every target=_blank link.
+  DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
+    if (node.tagName !== 'A') return;
+    if (node.getAttribute('target') === '_blank') {
+      node.setAttribute('rel', 'noopener noreferrer');
+    } else if (node.hasAttribute('rel')) {
+      const rel = node.getAttribute('rel') ?? '';
+      const tokens = new Set(rel.split(/\s+/).filter(Boolean));
+      if (tokens.has('noopener') || tokens.has('noreferrer')) {
+        tokens.add('noopener');
+        tokens.add('noreferrer');
+        node.setAttribute('rel', Array.from(tokens).join(' '));
+      }
+    }
+  });
+  hookInstalled = true;
+}
 
-const ALLOWED_ATTR = ['href', 'target', 'rel', 'src', 'alt', 'title'];
-
+// PAI-0025: allowlist sourced from @basepress/sanitizer so server and client
+// strip the same tags/attributes/URI schemes.
 export function sanitizeHtml(dirty: string): string {
+  ensureHook();
   return DOMPurify.sanitize(dirty, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    ALLOWED_URI_REGEXP: /^(https?:|mailto:|ipfs:)/i,
+    ALLOWED_TAGS: Array.from(ALLOWED_TAGS),
+    ALLOWED_ATTR: Array.from(ALLOWED_ATTRIBUTES_FLAT),
+    ALLOWED_URI_REGEXP,
   });
 }

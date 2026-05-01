@@ -34,8 +34,9 @@ export function WithdrawPanel() {
       <div className="rounded-xl bg-white p-5 ring-1 ring-inset ring-base-100 shadow-sm">
         <h3 className="text-base font-semibold text-base-900">Withdraw earnings</h3>
         <p className="mt-1 text-xs text-base-500">
-          Author balances accrue when readers mint your articles. Platform balance is the 5% fee
-          and can be claimed by anyone — funds always go to the on-chain platformTreasury.
+          Author balances accrue when readers mint your articles. Platform balance is the
+          on-chain platform fee and can be claimed by anyone — funds always go to the on-chain
+          platformTreasury.
         </p>
       </div>
 
@@ -64,12 +65,12 @@ function ChainRow({
     query: { enabled: !!contract },
   } as const;
 
-  const { data: authorBal, refetch: refetchAuthor } = useReadContract({
+  const { data: authorBal, refetch: refetchAuthor, error: authorErr } = useReadContract({
     ...baseRead,
     functionName: 'authorBalances',
     args: [authorAddress],
   });
-  const { data: platformBal, refetch: refetchPlatform } = useReadContract({
+  const { data: platformBal, refetch: refetchPlatform, error: platformErr } = useReadContract({
     ...baseRead,
     functionName: 'platformBalance',
   });
@@ -82,6 +83,11 @@ function ChainRow({
     functionName: 'platformTreasury',
   });
 
+  const readError = authorErr || platformErr;
+  useEffect(() => {
+    if (readError) console.error(`[WithdrawPanel ${chain.name}]`, readError);
+  }, [readError, chain.name]);
+
   const isOwner =
     ownerAddr && authorAddress
       ? (ownerAddr as string).toLowerCase() === authorAddress.toLowerCase()
@@ -92,15 +98,24 @@ function ChainRow({
   const { isLoading: confirming, isSuccess: confirmed } = useWaitForTransactionReceipt({
     hash: txHash,
     chainId: chain.id,
+    pollingInterval: 3_000,
+    confirmations: 1,
   });
 
   useEffect(() => {
     if (confirmed) {
       refetchAuthor();
       refetchPlatform();
+      setTimeout(() => { refetchAuthor(); refetchPlatform(); }, 2_000);
       setPending(null);
     }
   }, [confirmed, refetchAuthor, refetchPlatform]);
+
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setInterval(() => { refetchAuthor(); refetchPlatform(); }, 4_000);
+    return () => clearInterval(t);
+  }, [confirming, refetchAuthor, refetchPlatform]);
 
   const ensureChain = async () => {
     if (activeChainId !== chain.id) {
@@ -175,7 +190,7 @@ function ChainRow({
             pending === 'author' && writing
               ? 'Confirm in wallet…'
               : pending === 'author' && confirming
-              ? 'Mining…'
+              ? 'Confirming…'
               : 'Withdraw'
           }
           disabled={
@@ -194,7 +209,7 @@ function ChainRow({
             pending === 'platform' && writing
               ? 'Confirm in wallet…'
               : pending === 'platform' && confirming
-              ? 'Mining…'
+              ? 'Confirming…'
               : 'Sweep to treasury'
           }
           disabled={
@@ -208,6 +223,11 @@ function ChainRow({
         />
       </div>
 
+      {readError && (
+        <p className="mt-3 text-xs text-red-600">
+          {chain.name} read error: {readError.message?.slice(0, 150)}
+        </p>
+      )}
       {errorMsg && pending && (
         <p className="mt-3 text-xs text-red-600">
           {chain.name} — {errorMsg}

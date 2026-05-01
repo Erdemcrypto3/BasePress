@@ -1,0 +1,95 @@
+# PAI-0028: CI security gates — every PR runs these before merge.
+# Mirror in azure-pipelines-security.yml; keep both in sync.
+name: security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  pnpm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      # Fail on high/critical, surface moderate as a warning in the log.
+      - run: pnpm audit --audit-level=high --prod
+
+  slither:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: install hardhat deps
+        working-directory: contracts
+        run: npm ci
+      - uses: crytic/slither-action@v0.4.0
+        id: slither
+        with:
+          target: contracts/
+          fail-on: high
+          slither-args: --filter-paths "node_modules"
+          sarif: results.sarif
+      - name: upload sarif
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  contract-coverage:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npx hardhat coverage
+      - name: enforce coverage threshold
+        run: |
+          # Fail if statements/branches/functions/lines below 90%.
+          node -e "
+          const c = require('./coverage/coverage-summary.json').total;
+          const min = 90;
+          for (const k of ['statements','branches','functions','lines']) {
+            if (c[k].pct < min) {
+              console.error('coverage below threshold:', k, c[k].pct, '<', min);
+              process.exit(1);
+            }
+          }
+          console.log('coverage ok');
+          "
