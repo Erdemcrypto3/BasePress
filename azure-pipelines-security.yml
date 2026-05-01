@@ -37,8 +37,9 @@ stages:
     - script: |
         npm install -g pnpm@10.33.0
         pnpm install --frozen-lockfile
+        cd contracts && pnpm exec hardhat compile && cd ..
         pip install slither-analyzer
-        slither contracts/ --fail-high --filter-paths node_modules
+        slither contracts/ --fail-high --filter-paths node_modules --ignore-compile
       displayName: 'slither static analysis'
 
   - job: gitleaks
@@ -65,14 +66,30 @@ stages:
     - script: |
         cd contracts
         node -e "
-        const c = require('./coverage/coverage-summary.json').total;
-        const min = 90;
-        for (const k of ['statements','branches','functions','lines']) {
-          if (c[k].pct < min) {
-            console.error('coverage below threshold:', k, c[k].pct, '<', min);
-            process.exit(1);
+        const data = require('./coverage/coverage-final.json');
+        const agg = { statements: {h:0,t:0}, branches: {h:0,t:0}, functions: {h:0,t:0}, lines: {h:0,t:0} };
+        for (const file of Object.values(data)) {
+          for (const c of Object.values(file.s || {})) { agg.statements.t++; if (c > 0) agg.statements.h++; }
+          for (const arr of Object.values(file.b || {})) for (const c of arr) { agg.branches.t++; if (c > 0) agg.branches.h++; }
+          for (const c of Object.values(file.f || {})) { agg.functions.t++; if (c > 0) agg.functions.h++; }
+          const lines = file.statementMap ? new Map() : null;
+          for (const [id, c] of Object.entries(file.s || {})) {
+            const loc = file.statementMap && file.statementMap[id];
+            if (!loc) continue;
+            const ln = loc.start.line;
+            const prev = lines.get(ln) || 0;
+            if (c > 0 || prev > 0) lines.set(ln, Math.max(prev, c));
+            else lines.set(ln, 0);
           }
+          if (lines) for (const c of lines.values()) { agg.lines.t++; if (c > 0) agg.lines.h++; }
         }
-        console.log('coverage ok');
+        const min = 90;
+        let bad = false;
+        for (const [k, v] of Object.entries(agg)) {
+          const pct = v.t === 0 ? 100 : (100 * v.h / v.t);
+          console.log(k + ': ' + pct.toFixed(2) + '% (' + v.h + '/' + v.t + ')');
+          if (pct < min) { console.error('FAIL: ' + k + ' < ' + min); bad = true; }
+        }
+        process.exit(bad ? 1 : 0);
         "
       displayName: 'enforce coverage threshold (90%)'
