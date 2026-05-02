@@ -26,9 +26,10 @@ module.exports = {
       accounts,
     },
     baseSepolia: {
-      url: 'https://sepolia.base.org',
+      url: 'https://base-sepolia-rpc.publicnode.com',
       chainId: 84532,
       accounts,
+      timeout: 120000,
     },
     inkSepolia: {
       url: 'https://rpc-gel-sepolia.inkonchain.com',

@@ -26,16 +26,22 @@ async function main() {
   await upgrades.validateUpgrade(proxyAddress, BasePressV3, { kind: 'uups' });
   console.log('  Storage layout validation PASSED');
 
-  const v3 = await upgrades.upgradeProxy(proxyAddress, BasePressV3);
+  const v3 = await upgrades.upgradeProxy(proxyAddress, BasePressV3, {
+    redeployImplementation: 'always',
+  });
   await v3.waitForDeployment();
 
   const implAfter = await upgrades.erc1967.getImplementationAddress(proxyAddress);
   console.log(`  Impl (after):  ${implAfter}`);
 
-  const name = await v3.name();
+  if (implBefore === implAfter) {
+    console.log('  WARNING: implementation address unchanged — upgrade may not have taken effect');
+  }
+
   const owner = await v3.owner();
-  console.log(`  name():  ${name}`);
-  console.log(`  owner(): ${owner}`);
+  const paused = await v3.paused();
+  console.log(`  owner():  ${owner}`);
+  console.log(`  paused(): ${paused}`);
 
   console.log('\nUpgrade complete. Verify the new implementation:');
   console.log(`  npx hardhat verify --network ${network.name} ${implAfter}`);
