@@ -25,6 +25,16 @@ module.exports = {
       chainId: 57073,
       accounts,
     },
+    baseSepolia: {
+      url: 'https://sepolia.base.org',
+      chainId: 84532,
+      accounts,
+    },
+    inkSepolia: {
+      url: 'https://rpc-gel-sepolia.inkonchain.com',
+      chainId: 763373,
+      accounts,
+    },
   },
   etherscan: {
     apiKey: {
