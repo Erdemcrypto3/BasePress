@@ -34,8 +34,8 @@ export const ALLOWED_ATTRIBUTES_FLAT: readonly string[] = Array.from(
 
 export const ALLOWED_SCHEMES: readonly string[] = ['https', 'mailto', 'ipfs'];
 
-// DOMPurify expects this as a regexp.
-export const ALLOWED_URI_REGEXP = /^(https?:|mailto:|ipfs:)/i;
+// P001-PAI-0038: Removed `?` after `s` so only https: is allowed (matching ALLOWED_SCHEMES).
+export const ALLOWED_URI_REGEXP = /^(https:|mailto:|ipfs:)/i;
 
 // CSS allowlist passed to sanitize-html. DOMPurify does not consume this
 // directly, but inline styles end up filtered through the adapter on render.
