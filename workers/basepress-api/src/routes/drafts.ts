@@ -1,4 +1,11 @@
 import { Hono } from 'hono';
+import sanitizeHtml from 'sanitize-html';
+import {
+  ALLOWED_TAGS,
+  ALLOWED_ATTRIBUTES,
+  ALLOWED_SCHEMES,
+  ALLOWED_STYLES,
+} from '@basepress/sanitizer';
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
 import { listAllKeys } from '../lib/kv-helpers';
@@ -7,6 +14,30 @@ export const draftRoutes = new Hono<{ Bindings: Env }>();
 
 const MAX_DRAFTS_PER_AUTHOR = 50;
 const MAX_BODY_BYTES = 512_000;
+
+// P001-PAI-0036: field length caps matching article endpoint
+const MAX_TITLE = 200;
+const MAX_DESCRIPTION = 1000;
+const MAX_SLUG = 100;
+const MAX_TAGS = 10;
+const MAX_TAG_LEN = 50;
+
+// P001-PAI-0036: sanitize draft bodies with same allowlist as articles
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: Array.from(ALLOWED_TAGS),
+  allowedAttributes: Object.fromEntries(
+    Object.entries(ALLOWED_ATTRIBUTES).map(([tag, attrs]) => [tag, Array.from(attrs)]),
+  ),
+  allowedStyles: Object.fromEntries(
+    Object.entries(ALLOWED_STYLES).map(([tag, decls]) => [
+      tag,
+      Object.fromEntries(
+        Object.entries(decls).map(([prop, regs]) => [prop, Array.from(regs)]),
+      ),
+    ]),
+  ),
+  allowedSchemes: Array.from(ALLOWED_SCHEMES),
+};
 
 type StoredDraft = {
   draftId: string;
@@ -69,6 +100,27 @@ draftRoutes.put('/:draftId', async (c) => {
     return c.json({ error: 'body too large' }, 413);
   }
 
+  // P001-PAI-0036: field length validation matching article caps
+  if (typeof payload.title === 'string' && payload.title.length > MAX_TITLE) {
+    return c.json({ error: `title must be 0..${MAX_TITLE} chars` }, 400);
+  }
+  if (typeof payload.description === 'string' && payload.description.length > MAX_DESCRIPTION) {
+    return c.json({ error: `description must be 0..${MAX_DESCRIPTION} chars` }, 400);
+  }
+  if (typeof payload.slug === 'string' && payload.slug.length > MAX_SLUG) {
+    return c.json({ error: `slug must be 0..${MAX_SLUG} chars` }, 400);
+  }
+  if (Array.isArray(payload.tags)) {
+    if (payload.tags.length > MAX_TAGS) {
+      return c.json({ error: `tags must be an array of up to ${MAX_TAGS}` }, 400);
+    }
+    for (const t of payload.tags) {
+      if (typeof t !== 'string' || t.length > MAX_TAG_LEN) {
+        return c.json({ error: `each tag must be at most ${MAX_TAG_LEN} chars` }, 400);
+      }
+    }
+  }
+
   const key = draftKey(admin, draftId);
   const existing = await c.env.DRAFTS.get(key);
   const now = Math.floor(Date.now() / 1000);
@@ -82,6 +134,8 @@ draftRoutes.put('/:draftId', async (c) => {
   }
 
   const prev = existing ? (JSON.parse(existing) as StoredDraft) : null;
+  // P001-PAI-0036: sanitize draft body with same allowlist as articles
+  const cleanBody = payload.body ? sanitizeHtml(payload.body, SANITIZE_OPTIONS) : '';
   const draft: StoredDraft = {
     draftId,
     slug: payload.slug ?? '',
@@ -91,7 +145,7 @@ draftRoutes.put('/:draftId', async (c) => {
     priceEth: payload.priceEth ?? '0.001',
     maxSupply: payload.maxSupply ?? '0',
     coverImage: payload.coverImage,
-    body: payload.body ?? '',
+    body: cleanBody,
     selectedChains: Array.isArray(payload.selectedChains) ? payload.selectedChains : [],
     createdAt: prev?.createdAt ?? now,
     updatedAt: now,
