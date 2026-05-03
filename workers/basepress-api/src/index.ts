@@ -50,7 +50,8 @@ app.use(
 app.use(
   '*',
   cors({
-    origin: (origin, c) => c.env.ALLOWED_ORIGIN,
+    // P001-PAI-0035: validate incoming origin before reflecting CORS header
+    origin: (origin, c) => origin === c.env.ALLOWED_ORIGIN ? origin : '',
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     maxAge: 600,
