@@ -307,4 +307,11 @@ contract BasePressV3 is
     function isArticleRevoked(bytes32 articleId) external view returns (bool) {
         return revokedArticles[articleId];
     }
+
+    // =========================================================================
+    //                          STORAGE GAP (V3 → V4+)
+    // =========================================================================
+
+    // P001-PAI-0031: reserve storage slots for future upgrades
+    uint256[49] private __gap;
 }
