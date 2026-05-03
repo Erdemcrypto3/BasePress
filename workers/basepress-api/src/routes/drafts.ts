@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
+import { listAllKeys } from '../lib/kv-helpers';
 
 export const draftRoutes = new Hono<{ Bindings: Env }>();
 
@@ -34,9 +35,10 @@ draftRoutes.get('/', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
 
-  const list = await c.env.DRAFTS.list({ prefix: draftPrefix(admin) });
+  // P001-PAI-0032: use cursor-based pagination to fetch all draft keys
+  const allKeys = await listAllKeys(c.env.DRAFTS, { prefix: draftPrefix(admin) });
   const drafts: StoredDraft[] = [];
-  for (const k of list.keys) {
+  for (const k of allKeys) {
     const raw = await c.env.DRAFTS.get(k.name);
     if (raw) drafts.push(JSON.parse(raw));
   }
@@ -72,8 +74,9 @@ draftRoutes.put('/:draftId', async (c) => {
   const now = Math.floor(Date.now() / 1000);
 
   if (!existing) {
-    const list = await c.env.DRAFTS.list({ prefix: draftPrefix(admin) });
-    if (list.keys.length >= MAX_DRAFTS_PER_AUTHOR) {
+    // P001-PAI-0032: use cursor-based pagination for accurate quota check
+    const quotaKeys = await listAllKeys(c.env.DRAFTS, { prefix: draftPrefix(admin) });
+    if (quotaKeys.length >= MAX_DRAFTS_PER_AUTHOR) {
       return c.json({ error: `draft quota reached (max ${MAX_DRAFTS_PER_AUTHOR})` }, 429);
     }
   }

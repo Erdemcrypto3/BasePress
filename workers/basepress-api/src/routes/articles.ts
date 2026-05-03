@@ -9,6 +9,7 @@ import {
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
 import { recoverPermitSigner, isKnownChainId } from '../lib/permit-verify';
+import { listAllKeys } from '../lib/kv-helpers';
 
 export const articleRoutes = new Hono<{ Bindings: Env }>();
 
@@ -79,9 +80,10 @@ articleRoutes.get('/', async (c) => {
 
   const isAdmin = !!(await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin')));
 
-  const list = await c.env.ARTICLES.list({ prefix: 'article:' });
+  // P001-PAI-0032: use cursor-based pagination to fetch all article keys
+  const allKeys = await listAllKeys(c.env.ARTICLES, { prefix: 'article:' });
   const articles: StoredArticle[] = [];
-  for (const k of list.keys) {
+  for (const k of allKeys) {
     const raw = await c.env.ARTICLES.get(k.name);
     if (raw) {
       const article = JSON.parse(raw) as StoredArticle;

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
+import { listAllKeys } from '../lib/kv-helpers';
 
 export const tagRoutes = new Hono<{ Bindings: Env }>();
 
@@ -48,8 +49,9 @@ async function allTags(kv: KVNamespace): Promise<StoredTag[]> {
     }
   }
 
-  const list = await kv.list({ prefix: 'tag:' });
-  for (const k of list.keys) {
+  // P001-PAI-0032: use cursor-based pagination to fetch all tag keys
+  const allKeys = await listAllKeys(kv, { prefix: 'tag:' });
+  for (const k of allKeys) {
     if (k.name === TAG_INDEX_KEY) continue;
     const slug = k.name.slice(4);
     if (seen.has(slug)) continue;
