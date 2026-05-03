@@ -202,8 +202,14 @@ function ChainRow({
           }
           onClick={onWithdrawAuthor}
         />
+        {/* P001-PAI-0045: clarify platform sweep for non-owner wallets */}
         <Slot
           title={`Platform balance${isOwner ? ' (owner)' : ''}`}
+          subtitle={
+            isOwner
+              ? undefined
+              : 'Public function — funds go to the on-chain treasury, not your wallet.'
+          }
           eth={platformEth}
           buttonLabel={
             pending === 'platform' && writing
@@ -252,12 +258,14 @@ function ChainRow({
 
 function Slot({
   title,
+  subtitle,
   eth,
   buttonLabel,
   disabled,
   onClick,
 }: {
   title: string;
+  subtitle?: string; // P001-PAI-0045: optional info line below title
   eth: string;
   buttonLabel: string;
   disabled: boolean;
@@ -266,6 +274,9 @@ function Slot({
   return (
     <div className="rounded-md bg-base-50 p-4 ring-1 ring-inset ring-base-100">
       <div className="text-[10px] uppercase tracking-wider text-base-500">{title}</div>
+      {subtitle && (
+        <div className="mt-0.5 text-[10px] text-base-400">{subtitle}</div>
+      )}
       <div className="mt-1 text-base font-semibold text-base-900">{eth} ETH</div>
       <button
         type="button"
