@@ -9,11 +9,17 @@ import {
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
 import { listAllKeys } from '../lib/kv-helpers';
+// P001-PAI-0039: per-session rate limiting on write endpoints
+import { checkRateLimit, getClientIp } from '../lib/rate-limit';
 
 export const draftRoutes = new Hono<{ Bindings: Env }>();
 
 const MAX_DRAFTS_PER_AUTHOR = 50;
 const MAX_BODY_BYTES = 512_000;
+
+// P001-PAI-0039: rate-limit caps for draft write endpoints
+const RATE_LIMIT_DRAFT_WRITE = 30; // save/update per 60 s
+const RATE_LIMIT_DRAFT_DELETE = 10; // deletes per 60 s
 
 // P001-PAI-0036: field length caps matching article endpoint
 const MAX_TITLE = 200;
@@ -90,6 +96,12 @@ draftRoutes.put('/:draftId', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
 
+  // P001-PAI-0039: per-session rate limit on draft save/update
+  const ip = getClientIp(c);
+  if (!(await checkRateLimit(c.env.SESSIONS, 'draft-write', `${admin}:${ip}`, RATE_LIMIT_DRAFT_WRITE))) {
+    return c.json({ error: 'rate limit exceeded, try again later' }, 429);
+  }
+
   const draftId = c.req.param('draftId');
   if (!/^[a-zA-Z0-9_-]{1,64}$/.test(draftId)) {
     return c.json({ error: 'invalid draftId' }, 400);
@@ -158,6 +170,12 @@ draftRoutes.put('/:draftId', async (c) => {
 draftRoutes.delete('/:draftId', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
+
+  // P001-PAI-0039: per-session rate limit on draft delete
+  const ip = getClientIp(c);
+  if (!(await checkRateLimit(c.env.SESSIONS, 'draft-delete', `${admin}:${ip}`, RATE_LIMIT_DRAFT_DELETE))) {
+    return c.json({ error: 'rate limit exceeded, try again later' }, 429);
+  }
 
   const key = draftKey(admin, c.req.param('draftId'));
   const existing = await c.env.DRAFTS.get(key);

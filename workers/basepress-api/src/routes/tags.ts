@@ -2,8 +2,13 @@ import { Hono } from 'hono';
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
 import { listAllKeys } from '../lib/kv-helpers';
+// P001-PAI-0039: per-session rate limiting on write endpoints
+import { checkRateLimit, getClientIp } from '../lib/rate-limit';
 
 export const tagRoutes = new Hono<{ Bindings: Env }>();
+
+// P001-PAI-0039: rate-limit caps for tag write endpoints
+const RATE_LIMIT_TAG_WRITE = 10; // create/update per 60 s
 
 type StoredTag = {
   slug: string;
@@ -86,6 +91,12 @@ tagRoutes.post('/', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
 
+  // P001-PAI-0039: per-session rate limit on tag creation
+  const ip = getClientIp(c);
+  if (!(await checkRateLimit(c.env.SESSIONS, 'tag-write', `${admin}:${ip}`, RATE_LIMIT_TAG_WRITE))) {
+    return c.json({ error: 'rate limit exceeded, try again later' }, 429);
+  }
+
   const { name } = await c.req.json<{ name: string }>();
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return c.json({ error: 'name required' }, 400);
@@ -119,6 +130,12 @@ tagRoutes.post('/', async (c) => {
 tagRoutes.put('/:slug', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
+
+  // P001-PAI-0039: per-session rate limit on tag update
+  const ip = getClientIp(c);
+  if (!(await checkRateLimit(c.env.SESSIONS, 'tag-write', `${admin}:${ip}`, RATE_LIMIT_TAG_WRITE))) {
+    return c.json({ error: 'rate limit exceeded, try again later' }, 429);
+  }
 
   const slug = c.req.param('slug');
   const raw = await c.env.ARTICLES.get(tagKey(slug));

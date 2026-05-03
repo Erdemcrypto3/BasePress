@@ -10,6 +10,8 @@ import type { Env } from '../index';
 import { requireAdmin } from './auth';
 import { recoverPermitSigner, isKnownChainId } from '../lib/permit-verify';
 import { listAllKeys } from '../lib/kv-helpers';
+// P001-PAI-0039: per-session rate limiting on write endpoints
+import { checkRateLimit, getClientIp } from '../lib/rate-limit';
 
 export const articleRoutes = new Hono<{ Bindings: Env }>();
 
@@ -23,6 +25,10 @@ const MAX_DESCRIPTION = 1000;
 const MAX_SLUG = 100;
 const MAX_TAGS = 10;
 const MAX_TAG_LEN = 50;
+
+// P001-PAI-0039: rate-limit caps for write endpoints
+const RATE_LIMIT_PUBLISH = 5; // max 5 publishes per 60 s
+const RATE_LIMIT_VISIBILITY = 20; // max 20 visibility toggles per 60 s
 
 // PAI-0025: allowlist sourced from @basepress/sanitizer so server and client
 // strip the same tags/attributes/URI schemes.
@@ -112,6 +118,12 @@ articleRoutes.get('/:articleId', async (c) => {
 articleRoutes.post('/', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
+
+  // P001-PAI-0039: per-session rate limit on article publish
+  const ip = getClientIp(c);
+  if (!(await checkRateLimit(c.env.SESSIONS, 'publish', `${admin}:${ip}`, RATE_LIMIT_PUBLISH))) {
+    return c.json({ error: 'rate limit exceeded, try again later' }, 429);
+  }
 
   // PAI-0020: hard cap on payload size (cheap header check first)
   const declaredLen = parseInt(c.req.header('content-length') || '0', 10);
@@ -267,6 +279,12 @@ articleRoutes.post('/', async (c) => {
 articleRoutes.put('/:articleId/visibility', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
+
+  // P001-PAI-0039: per-session rate limit on visibility toggle
+  const ip = getClientIp(c);
+  if (!(await checkRateLimit(c.env.SESSIONS, 'visibility', `${admin}:${ip}`, RATE_LIMIT_VISIBILITY))) {
+    return c.json({ error: 'rate limit exceeded, try again later' }, 429);
+  }
 
   const id = c.req.param('articleId');
   const raw = await c.env.ARTICLES.get(`article:${id}`);

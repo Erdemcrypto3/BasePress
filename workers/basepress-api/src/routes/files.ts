@@ -1,11 +1,17 @@
 import { Hono } from 'hono';
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
+// P001-PAI-0039: per-session rate limiting on write endpoints
+import { checkRateLimit, checkDailyLimit, getClientIp } from '../lib/rate-limit';
 
 export const fileRoutes = new Hono<{ Bindings: Env }>();
 
 const MAX_COVER_BYTES = 4 * 1024 * 1024; // 4 MB
 const ALLOWED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
+// P001-PAI-0039: rate-limit caps for cover upload
+const RATE_LIMIT_COVER_UPLOAD = 10; // max 10 uploads per 60 s
+const DAILY_COVER_UPLOAD_LIMIT = 50; // max 50 covers per day per session
 
 function bytesToHex(buf: ArrayBuffer): string {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -119,6 +125,16 @@ function readDimensions(data: ArrayBuffer, contentType: string): Dimensions | nu
 fileRoutes.post('/cover', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
+
+  // P001-PAI-0039: per-session rate limit + daily upload cap for cover uploads
+  const ip = getClientIp(c);
+  const identity = `${admin}:${ip}`;
+  if (!(await checkRateLimit(c.env.SESSIONS, 'cover-upload', identity, RATE_LIMIT_COVER_UPLOAD))) {
+    return c.json({ error: 'rate limit exceeded, try again later' }, 429);
+  }
+  if (!(await checkDailyLimit(c.env.SESSIONS, 'cover-upload', identity, DAILY_COVER_UPLOAD_LIMIT))) {
+    return c.json({ error: 'daily upload limit exceeded' }, 429);
+  }
 
   const ct = (c.req.header('Content-Type') || '').toLowerCase().split(';')[0].trim();
   if (!ALLOWED_IMAGE_TYPES.includes(ct)) {

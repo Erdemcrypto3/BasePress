@@ -2,12 +2,13 @@ import { Hono } from 'hono';
 import { SiweMessage } from 'siwe';
 import type { Env } from '../index';
 import { isAdmin as kvIsAdmin } from '../lib/admins';
+// P001-PAI-0039: use shared rate-limit helpers (extracted from this file)
+import { checkRateLimit, getClientIp } from '../lib/rate-limit';
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
 
 const NONCE_TTL_SECONDS = 300;
 const SESSION_TTL_SECONDS = 3600;
-const RATE_LIMIT_WINDOW_SECONDS = 60;
 const RATE_LIMIT_MAX_REQUESTS_NONCE = 10;
 const RATE_LIMIT_MAX_REQUESTS_VERIFY = 5;
 
@@ -22,37 +23,9 @@ function randomNonce(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function getClientIp(c: { req: { header: (name: string) => string | undefined } }): string {
-  return c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-}
-
-// PAI-0011 (nonce) + PAI-0018 (verify): rate-limit per (endpoint, IP) via KV
-async function checkRateLimit(env: Env, endpoint: string, ip: string, max: number): Promise<boolean> {
-  const key = `ratelimit:${endpoint}:${ip}`;
-  const raw = await env.SESSIONS.get(key);
-  const now = Math.floor(Date.now() / 1000);
-
-  if (!raw) {
-    await env.SESSIONS.put(key, JSON.stringify({ count: 1, start: now }), {
-      expirationTtl: RATE_LIMIT_WINDOW_SECONDS,
-    });
-    return true;
-  }
-
-  const data = JSON.parse(raw) as { count: number; start: number };
-  if (data.count >= max) return false;
-
-  data.count++;
-  const remaining = RATE_LIMIT_WINDOW_SECONDS - (now - data.start);
-  await env.SESSIONS.put(key, JSON.stringify(data), {
-    expirationTtl: Math.max(remaining, 1),
-  });
-  return true;
-}
-
 authRoutes.post('/nonce', async (c) => {
   const ip = getClientIp(c);
-  if (!(await checkRateLimit(c.env, 'nonce', ip, RATE_LIMIT_MAX_REQUESTS_NONCE))) {
+  if (!(await checkRateLimit(c.env.SESSIONS, 'nonce', ip, RATE_LIMIT_MAX_REQUESTS_NONCE))) {
     return c.json({ error: 'rate limit exceeded, try again later' }, 429);
   }
 
@@ -81,7 +54,7 @@ authRoutes.post('/nonce', async (c) => {
 
 authRoutes.post('/verify', async (c) => {
   const ip = getClientIp(c);
-  if (!(await checkRateLimit(c.env, 'verify', ip, RATE_LIMIT_MAX_REQUESTS_VERIFY))) {
+  if (!(await checkRateLimit(c.env.SESSIONS, 'verify', ip, RATE_LIMIT_MAX_REQUESTS_VERIFY))) {
     return c.json({ error: 'rate limit exceeded, try again later' }, 429);
   }
 
