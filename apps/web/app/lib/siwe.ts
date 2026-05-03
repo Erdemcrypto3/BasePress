@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount, useSignMessage } from '@basepress/wallet';
-import { siweNonce, siweVerify, type SiweSession } from './api';
+import { siweNonce, siweVerify, siweLogout, type SiweSession } from './api';
 
 const STORAGE_KEY = 'basepress:siwe';
 
@@ -106,11 +106,15 @@ export function useSiweSession(): SiweState {
     }
   }, [address, signMessageAsync]);
 
+  // P001-PAI-0033: revoke KV session server-side before clearing local state
   const signOut = useCallback(() => {
+    if (session?.token) {
+      siweLogout(session.token); // fire-and-forget; local state clears regardless
+    }
     setSession(null);
     setError(null);
     clearSession();
-  }, []);
+  }, [session]);
 
   return {
     session,

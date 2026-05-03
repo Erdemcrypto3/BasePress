@@ -88,6 +88,16 @@ export async function siweNonce(address: `0x${string}`): Promise<{ nonce: string
   return r.json();
 }
 
+// P001-PAI-0033: server-side session invalidation on sign-out
+export async function siweLogout(token: string): Promise<void> {
+  await fetch(`${API_URL}/auth/logout`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => {
+    /* best-effort — localStorage is always cleared regardless */
+  });
+}
+
 export async function siweVerify(message: string, signature: `0x${string}`): Promise<SiweSession> {
   const r = await fetch(`${API_URL}/auth/verify`, {
     method: 'POST',

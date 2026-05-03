@@ -129,6 +129,17 @@ authRoutes.post('/verify', async (c) => {
   return c.json({ token, address, expiresAt });
 });
 
+// P001-PAI-0033: server-side session invalidation on sign-out
+authRoutes.post('/logout', async (c) => {
+  const authHeader = c.req.header('authorization');
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ ok: true }); // no token — nothing to revoke
+  }
+  const token = authHeader.slice(7);
+  await c.env.SESSIONS.delete(`session:${token}`);
+  return c.json({ ok: true });
+});
+
 // PAI-0004: requireAdmin checks that the request origin matches the session origin
 export async function requireAdmin(
   env: Env,
