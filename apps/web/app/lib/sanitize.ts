@@ -3,13 +3,25 @@ import {
   ALLOWED_TAGS,
   ALLOWED_ATTRIBUTES_FLAT,
   ALLOWED_URI_REGEXP,
+  filterStyleString,
 } from '@basepress/sanitizer';
 
 let hookInstalled = false;
 function ensureHook() {
   if (hookInstalled) return;
   // PAI-0024: enforce rel="noopener noreferrer" on every target=_blank link.
+  // P001-PAI-0037: restrict inline style CSS properties to server allowlist.
   DOMPurify.addHook('afterSanitizeAttributes', (node: Element) => {
+    // P001-PAI-0037: filter inline styles against ALLOWED_STYLES allowlist
+    if (node.hasAttribute('style')) {
+      const filtered = filterStyleString(node.tagName, node.getAttribute('style') ?? '');
+      if (filtered) {
+        node.setAttribute('style', filtered);
+      } else {
+        node.removeAttribute('style');
+      }
+    }
+
     if (node.tagName !== 'A') return;
     if (node.getAttribute('target') === '_blank') {
       node.setAttribute('rel', 'noopener noreferrer');

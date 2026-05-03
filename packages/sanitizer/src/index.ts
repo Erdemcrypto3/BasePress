@@ -44,3 +44,29 @@ export const ALLOWED_STYLES: Readonly<Record<string, Readonly<Record<string, rea
   mark: { 'background-color': [/.*/] },
   span: { color: [/.*/] },
 };
+
+// P001-PAI-0037: Helper to filter an inline style string against ALLOWED_STYLES
+// for a given tag. Returns the sanitised style string (empty string if nothing
+// passes). Used by the client DOMPurify hook to enforce the same CSS property
+// restrictions the server sanitize-html already applies.
+export function filterStyleString(tagName: string, styleStr: string): string {
+  const tag = tagName.toLowerCase();
+  const globalRules = ALLOWED_STYLES['*'] ?? {};
+  const tagRules = ALLOWED_STYLES[tag] ?? {};
+
+  return styleStr
+    .split(';')
+    .map((decl) => decl.trim())
+    .filter((decl) => {
+      if (!decl) return false;
+      const colonIdx = decl.indexOf(':');
+      if (colonIdx === -1) return false;
+      const prop = decl.slice(0, colonIdx).trim().toLowerCase();
+      const value = decl.slice(colonIdx + 1).trim();
+
+      const patterns = tagRules[prop] ?? globalRules[prop];
+      if (!patterns) return false;
+      return patterns.some((re) => re.test(value));
+    })
+    .join('; ');
+}
