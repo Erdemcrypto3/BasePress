@@ -144,8 +144,13 @@ tagRoutes.put('/:slug', async (c) => {
   const tag = JSON.parse(raw) as StoredTag;
   const update = await c.req.json<{ active?: boolean; name?: string }>();
 
+  // P001-PAI-0042: reject name changes — slug and name must stay consistent.
+  // To rename a tag, delete it and create a new one so the slug is regenerated.
+  if (typeof update.name === 'string' && update.name.trim() && update.name.trim() !== tag.name) {
+    return c.json({ error: 'name changes not allowed; delete and recreate the tag instead' }, 400);
+  }
+
   if (typeof update.active === 'boolean') tag.active = update.active;
-  if (typeof update.name === 'string' && update.name.trim()) tag.name = update.name.trim();
   tag.updatedAt = Math.floor(Date.now() / 1000);
 
   await c.env.ARTICLES.put(tagKey(slug), JSON.stringify(tag));
