@@ -296,6 +296,26 @@ export function WriteArticle({ session, onPublished }: Props) {
     }
   };
 
+  // P001-PAI-0041: inline images must go through R2 upload (same as cover images)
+  const handleInlineImageUpload = useCallback(
+    async (file: File) => {
+      if (!editor) return;
+      try {
+        setBusy(true);
+        setStatus('Uploading inline image…');
+        setError(null);
+        const r = await uploadCover(session.token, file);
+        editor.chain().focus().insertContent(`<img src="${r.url}" alt="" />`).run();
+        setStatus('Image inserted.');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusy(false);
+      }
+    },
+    [editor, session.token],
+  );
+
   const handlePublish = async () => {
     if (!editor || !address) return;
     if (!title) {
@@ -671,7 +691,7 @@ export function WriteArticle({ session, onPublished }: Props) {
       </details>
 
       <Section title="Body">
-        <Toolbar editor={editor} />
+        <Toolbar editor={editor} onInsertImage={handleInlineImageUpload} />
         <EditorContent editor={editor} />
         {editor && (
           <div className="mt-2 text-right text-xs text-base-400">
@@ -784,7 +804,9 @@ function Field({
   );
 }
 
-function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+function Toolbar({ editor, onInsertImage }: { editor: ReturnType<typeof useEditor>; onInsertImage: (file: File) => void }) {
+  // P001-PAI-0041: hidden file input ref for inline image upload (no external URLs)
+  const imgInputRef = useRef<HTMLInputElement>(null);
   if (!editor) return null;
   const btn = (active: boolean) =>
     `rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors ${
@@ -886,15 +908,23 @@ function Toolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
       >
         🔗
       </button>
+      {/* P001-PAI-0041: inline images uploaded to R2 via /file/cover instead of arbitrary external URLs */}
+      <input
+        ref={imgInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onInsertImage(f);
+          e.target.value = '';
+        }}
+      />
       <button
         type="button"
         className={btn(false)}
-        onClick={() => {
-          const url = window.prompt('Image URL (https only)');
-          if (!url || !url.startsWith('https://')) return;
-          editor.chain().focus().insertContent(`<img src="${url}" alt="" />`).run();
-        }}
-        title="Insert image"
+        onClick={() => imgInputRef.current?.click()}
+        title="Insert image (upload)"
       >
         🖼
       </button>
