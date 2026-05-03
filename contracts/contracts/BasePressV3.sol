@@ -23,6 +23,11 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  *   PAI-0008 (M-04): pragma pinned 0.8.24 (no caret)
  *
  * Storage is APPEND-ONLY vs V2: revokedArticles is the only new state slot.
+ *
+ * P001-PAI-0044: No receive()/fallback() by design — ETH enters only via payable
+ * mintWithPermit, preventing accounting desync. Force-sent ETH (selfdestruct) is
+ * effectively impossible post-Cancun (EIP-6780). If rescue is ever needed, it can
+ * be added in a future UUPS upgrade.
  */
 contract BasePressV3 is
     Initializable,
