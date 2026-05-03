@@ -30,6 +30,17 @@ const MAX_TAG_LEN = 50;
 const RATE_LIMIT_PUBLISH = 5; // max 5 publishes per 60 s
 const RATE_LIMIT_VISIBILITY = 20; // max 20 visibility toggles per 60 s
 
+// P001-PAI-0040: strip HTML tags and Unicode control characters from plain-text
+// fields (title, description, tags). Prevents stored-XSS for future API consumers
+// that don't auto-escape like React does.
+function stripPlainText(input: string): string {
+  // Strip all HTML tags by running sanitize-html with zero allowed tags
+  const noHtml = sanitizeHtml(input, { allowedTags: [], allowedAttributes: {} });
+  // Remove Unicode control characters (C0, C1, DEL) except common whitespace
+  // eslint-disable-next-line no-control-regex
+  return noHtml.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+}
+
 // PAI-0025: allowlist sourced from @basepress/sanitizer so server and client
 // strip the same tags/attributes/URI schemes.
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
@@ -249,6 +260,11 @@ articleRoutes.post('/', async (c) => {
       return c.json({ error: 'coverImage must be a valid URL' }, 400);
     }
   }
+
+  // P001-PAI-0040: sanitize plain-text fields (strip HTML + control chars)
+  payload.title = stripPlainText(payload.title);
+  payload.description = stripPlainText(payload.description);
+  payload.tags = payload.tags.map(stripPlainText);
 
   // PAI-0003: server-side HTML sanitization
   const cleanBody = sanitizeHtml(payload.body, SANITIZE_OPTIONS);
