@@ -239,7 +239,8 @@ contract BasePressV3 is
         emit AuthorWithdrawal(msg.sender, amount);
     }
 
-    function withdrawPlatform() external nonReentrant whenNotPaused {
+    // P001-PAI-0034: restrict platform withdrawal to owner — prevents griefing / forced withdrawals
+    function withdrawPlatform() external onlyOwner nonReentrant whenNotPaused {
         uint256 amount = platformBalance;
         if (amount == 0) revert NothingToWithdraw();
         platformBalance = 0;

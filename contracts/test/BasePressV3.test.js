@@ -609,6 +609,38 @@ describe('BasePressV3', function () {
     });
   });
 
+
+  // ---------------------------------------------------------------------------
+  // PAI-0034: withdrawPlatform — onlyOwner access control
+  // ---------------------------------------------------------------------------
+  describe('withdrawPlatform — onlyOwner (PAI-0034)', function () {
+    it('reverts when called by non-owner', async function () {
+      // P001-PAI-0034: attacker cannot force platform withdrawals
+      const { proxy, platformSigner, proxyAddr, chainId, alice, bob, attacker } =
+        await loadFixture(deployV3Fresh);
+
+      const permit = buildPermit({ author: alice.address });
+      const sig = await signPermit(platformSigner, permit, proxyAddr, chainId);
+      await proxy.connect(bob).mintWithPermit(permit, sig, { value: PRICE });
+
+      await expect(
+        proxy.connect(attacker).withdrawPlatform(),
+      ).to.be.revertedWithCustomError(proxy, 'OwnableUnauthorizedAccount');
+    });
+
+    it('succeeds when called by owner', async function () {
+      // P001-PAI-0034: owner can still withdraw platform funds
+      const { proxy, treasury, platformSigner, proxyAddr, chainId, alice, bob } =
+        await loadFixture(deployV3Fresh);
+
+      const permit = buildPermit({ author: alice.address });
+      const sig = await signPermit(platformSigner, permit, proxyAddr, chainId);
+      await proxy.connect(bob).mintWithPermit(permit, sig, { value: PRICE });
+
+      const fee = (PRICE * DEFAULT_FEE_BPS) / 10000n;
+      await expect(proxy.withdrawPlatform()).to.changeEtherBalance(treasury, fee);
+    });
+  });
   // ---------------------------------------------------------------------------
   // V2 Regression — core V2 tests re-run on V3 to prove no regression
   // ---------------------------------------------------------------------------
