@@ -66,10 +66,7 @@ type ArticleSignature = {
 
 type StoredPermit = {
   articleId: `0x${string}`;
-  contentURI: string;
   author: `0x${string}`;
-  price: string;
-  maxSupply: string;
   deadline: number;
 };
 
@@ -206,10 +203,7 @@ articleRoutes.post('/', async (c) => {
   }
   const permitMessage = {
     articleId: payload.permit.articleId,
-    contentURI: payload.permit.contentURI,
     author: payload.permit.author,
-    price: BigInt(payload.permit.price),
-    maxSupply: BigInt(payload.permit.maxSupply),
     deadline: BigInt(payload.permit.deadline),
   };
   for (const s of payload.signatures) {
@@ -239,14 +233,9 @@ articleRoutes.post('/', async (c) => {
     return c.json({ error: 'article already exists — published articles are immutable' }, 409);
   }
 
-  // PAI-0016: enforce canonical contentURI — readers route via contentKey,
-  // but the on-chain permit's contentURI MUST point at our canonical R2 path
-  // so on-chain readers (block explorers, indexers) can trust the link.
-  const apiOrigin = new URL(c.req.url).origin;
-  const expectedContentURI = `${apiOrigin}/file/articles/${articleId}/body.html`;
-  if (payload.permit.contentURI !== expectedContentURI) {
-    return c.json({ error: 'permit.contentURI must equal canonical R2 path' }, 400);
-  }
+  // PAI-0016: contentURI removed from permit in V4 (stored off-chain only).
+  // Content is still stored at the canonical R2 path but no longer validated
+  // as part of the EIP-712 signed struct.
 
   // PAI-0013: validate coverImage origin if provided
   if (payload.coverImage) {

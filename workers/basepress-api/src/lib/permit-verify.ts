@@ -13,20 +13,14 @@ const PERMIT_DOMAIN_VERSION = '1';
 const MINT_PERMIT_TYPES = {
   MintPermit: [
     { name: 'articleId', type: 'bytes32' },
-    { name: 'contentURI', type: 'string' },
     { name: 'author', type: 'address' },
-    { name: 'price', type: 'uint256' },
-    { name: 'maxSupply', type: 'uint256' },
     { name: 'deadline', type: 'uint256' },
   ],
 } as const;
 
 export type PermitMessage = {
   articleId: `0x${string}`;
-  contentURI: string;
   author: `0x${string}`;
-  price: bigint;
-  maxSupply: bigint;
   deadline: bigint;
 };
 
