@@ -15,6 +15,8 @@ export type Env = {
   DRAFTS: KVNamespace;
   ALLOWED_ORIGIN: string;
   ADMIN_ADDRESSES: string;
+  // P001-PAI-0052: comma-separated super-admin addresses that can add/remove admins
+  SUPER_ADMINS: string;
   // PAI-0017: address that should recover from every signed MintPermit. Set in
   // wrangler.toml [vars] and rotated when the on-chain platformSigner rotates.
   PLATFORM_SIGNER: string;

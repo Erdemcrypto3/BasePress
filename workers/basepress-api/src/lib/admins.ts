@@ -63,6 +63,15 @@ export async function isAdmin(env: Env, address: string): Promise<boolean> {
   return list.includes(target);
 }
 
+// P001-PAI-0052: only super-admins can add/remove admins
+export function isSuperAdmin(env: Env, address: string): boolean {
+  const supers = (env.SUPER_ADMINS || '')
+    .split(',')
+    .map(normalize)
+    .filter(isValidAddress);
+  return supers.includes(normalize(address));
+}
+
 export async function addAdmin(env: Env, address: string, by: string): Promise<string[]> {
   const target = normalize(address);
   if (!isValidAddress(target)) throw new Error('invalid address');

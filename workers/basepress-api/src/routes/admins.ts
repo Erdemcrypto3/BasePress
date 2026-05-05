@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../index';
 import { requireAdmin } from './auth';
-import { listAdmins, addAdmin, removeAdmin } from '../lib/admins';
+import { listAdmins, addAdmin, removeAdmin, isSuperAdmin } from '../lib/admins';
 // P001-PAI-0039: per-session rate limiting on write endpoints
 import { checkRateLimit, getClientIp } from '../lib/rate-limit';
 
@@ -20,6 +20,11 @@ adminRoutes.get('/', async (c) => {
 adminRoutes.post('/', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
+
+  // P001-PAI-0052: only super-admins can add/remove admins
+  if (!isSuperAdmin(c.env, admin)) {
+    return c.json({ error: 'super-admin required for admin changes' }, 403);
+  }
 
   // P001-PAI-0039: per-session rate limit on admin add
   const ip = getClientIp(c);
@@ -40,6 +45,11 @@ adminRoutes.post('/', async (c) => {
 adminRoutes.delete('/:address', async (c) => {
   const admin = await requireAdmin(c.env, c.req.header('Authorization'), c.req.header('origin'));
   if (!admin) return c.json({ error: 'unauthorized' }, 401);
+
+  // P001-PAI-0052: only super-admins can add/remove admins
+  if (!isSuperAdmin(c.env, admin)) {
+    return c.json({ error: 'super-admin required for admin changes' }, 403);
+  }
 
   // P001-PAI-0039: per-session rate limit on admin remove
   const ip = getClientIp(c);
