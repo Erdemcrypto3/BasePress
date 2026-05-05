@@ -18,7 +18,8 @@ const connectors = connectorsForWallets(
   ],
   {
     appName: 'BasePress',
-    projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || '0',
+    // P001-PAI-0062: fail visibly instead of silently rate-limited with invalid '0'
+    projectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID || '',
   },
 );
 

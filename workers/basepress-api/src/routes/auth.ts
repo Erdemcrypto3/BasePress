@@ -7,6 +7,9 @@ import { checkRateLimit, getClientIp } from '../lib/rate-limit';
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
 
+// P001-PAI-0058: whitelist of supported chain IDs for SIWE messages
+const SUPPORTED_CHAIN_IDS = [8453, 57073] as const; // Base, Ink
+
 const NONCE_TTL_SECONDS = 300;
 const SESSION_TTL_SECONDS = 3600;
 const RATE_LIMIT_MAX_REQUESTS_NONCE = 10;
@@ -29,8 +32,13 @@ authRoutes.post('/nonce', async (c) => {
     return c.json({ error: 'rate limit exceeded, try again later' }, 429);
   }
 
-  const { address } = await c.req.json<{ address: string }>();
+  const { address, chainId } = await c.req.json<{ address: string; chainId?: number }>();
   if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return c.json({ error: 'bad address' }, 400);
+
+  // P001-PAI-0058: accept client chainId with whitelist validation, default to Base
+  const resolvedChainId = chainId && SUPPORTED_CHAIN_IDS.includes(chainId as (typeof SUPPORTED_CHAIN_IDS)[number])
+    ? chainId
+    : 8453;
 
   const nonce = randomNonce();
   await c.env.SESSIONS.put(`nonce:${nonce}`, address.toLowerCase(), {
@@ -44,7 +52,7 @@ authRoutes.post('/nonce', async (c) => {
     statement: 'Sign in to BasePress admin.',
     uri: c.env.ALLOWED_ORIGIN,
     version: '1',
-    chainId: 8453,
+    chainId: resolvedChainId,
     nonce,
     issuedAt: new Date().toISOString(),
   }).prepareMessage();

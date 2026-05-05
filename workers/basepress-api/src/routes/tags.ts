@@ -9,6 +9,8 @@ export const tagRoutes = new Hono<{ Bindings: Env }>();
 
 // P001-PAI-0039: rate-limit caps for tag write endpoints
 const RATE_LIMIT_TAG_WRITE = 10; // create/update per 60 s
+// P001-PAI-0059: cap tag name length to match drafts MAX_TAG_LEN
+const MAX_TAG_NAME_LEN = 50;
 
 type StoredTag = {
   slug: string;
@@ -101,6 +103,10 @@ tagRoutes.post('/', async (c) => {
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     return c.json({ error: 'name required' }, 400);
   }
+  // P001-PAI-0059: enforce tag name length cap
+  if (name.trim().length > MAX_TAG_NAME_LEN) {
+    return c.json({ error: `name must be ${MAX_TAG_NAME_LEN} characters or fewer` }, 400);
+  }
 
   const slug = slugify(name.trim());
   if (!slug) return c.json({ error: 'invalid name' }, 400);
@@ -143,6 +149,11 @@ tagRoutes.put('/:slug', async (c) => {
 
   const tag = JSON.parse(raw) as StoredTag;
   const update = await c.req.json<{ active?: boolean; name?: string }>();
+
+  // P001-PAI-0059: enforce tag name length cap on update
+  if (typeof update.name === 'string' && update.name.trim().length > MAX_TAG_NAME_LEN) {
+    return c.json({ error: `name must be ${MAX_TAG_NAME_LEN} characters or fewer` }, 400);
+  }
 
   // P001-PAI-0042: reject name changes — slug and name must stay consistent.
   // To rename a tag, delete it and create a new one so the slug is regenerated.
