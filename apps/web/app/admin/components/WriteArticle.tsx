@@ -10,7 +10,6 @@ import TextAlign from '@tiptap/extension-text-align';
 import Highlight from '@tiptap/extension-highlight';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
 import CharacterCount from '@tiptap/extension-character-count';
-import ImageExt from '@tiptap/extension-image';
 import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { parseEther, type Address } from 'viem';
@@ -107,7 +106,6 @@ export function WriteArticle({ session, onPublished }: Props) {
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       HorizontalRule,
       CharacterCount,
-      ImageExt.configure({ inline: true, allowBase64: false }),
     ],
     content: '',
     immediatelyRender: false,
@@ -307,8 +305,9 @@ export function WriteArticle({ session, onPublished }: Props) {
         setStatus('Uploading inline image…');
         setError(null);
         const r = await uploadCover(session.token, file);
-        // P001-PAI-0056: use Tiptap setImage() instead of raw template literal
-        editor.chain().focus().setImage({ src: r.url, alt: '' }).run();
+        // P001-PAI-0056: validate URL before inserting to prevent injection via template literal
+        const safeUrl = new URL(r.url).toString();
+        editor.chain().focus().insertContent(`<img src="${safeUrl}" alt="" />`).run();
         setStatus('Image inserted.');
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
