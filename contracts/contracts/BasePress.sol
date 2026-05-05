@@ -183,6 +183,8 @@ contract BasePress is
         nonReentrant
         whenNotPaused
     {
+        // P001-PAI-0057: reject zero-address author to prevent ETH locked in authorBalances[0x0]
+        if (permit.author == address(0)) revert ZeroAddress();
         if (permit.deadline != 0 && block.timestamp > permit.deadline) revert PermitExpired();
         if (msg.value != permit.price) revert IncorrectPayment();
 
