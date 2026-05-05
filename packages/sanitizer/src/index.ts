@@ -41,8 +41,9 @@ export const ALLOWED_URI_REGEXP = /^(https:|mailto:|ipfs:)/i;
 // directly, but inline styles end up filtered through the adapter on render.
 export const ALLOWED_STYLES: Readonly<Record<string, Readonly<Record<string, readonly RegExp[]>>>> = {
   '*': { 'text-align': [/^left$/, /^center$/, /^right$/] },
-  mark: { 'background-color': [/.*/] },
-  span: { color: [/.*/] },
+  // P001-PAI-0055: tightened from /.*/ to specific color formats
+  mark: { 'background-color': [/^#[0-9a-fA-F]{3,8}$/, /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(,\s*[\d.]+)?\s*\)$/, /^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%(,\s*[\d.]+)?\s*\)$/] },
+  span: { color: [/^#[0-9a-fA-F]{3,8}$/, /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(,\s*[\d.]+)?\s*\)$/, /^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%(,\s*[\d.]+)?\s*\)$/] },
 };
 
 // P001-PAI-0037: Helper to filter an inline style string against ALLOWED_STYLES
