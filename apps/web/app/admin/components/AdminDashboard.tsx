@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { fetchArticles, toggleArticleVisibility, type ArticleListItem, type SiweSession } from '../../lib/api';
 import { SUPPORTED_CHAINS } from '@basepress/chain';
+import { MINT_PRICE } from '../../lib/contract';
 import { MintCount } from '../../components/MintCount';
 
 type Props = { refreshKey: number; session: SiweSession };
@@ -67,13 +68,8 @@ export function AdminDashboard({ refreshKey, session }: Props) {
         const chains = a.signatures
           .map((s) => SUPPORTED_CHAINS.find((c) => c.id === s.chainId)?.name ?? `chain ${s.chainId}`)
           .join(' · ');
-        const priceEth = (() => {
-          try {
-            return `${(Number(a.permit.price) / 1e18).toFixed(4)} ETH`;
-          } catch {
-            return '—';
-          }
-        })();
+        // Refs: P001-PAI-0051 — V4 price is a fixed contract constant for every article.
+        const priceEth = `${MINT_PRICE} ETH`;
         const isToggling = toggling === a.articleId;
         return (
           <article
@@ -123,9 +119,7 @@ export function AdminDashboard({ refreshKey, session }: Props) {
             )}
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-base-500 sm:grid-cols-5">
               <Stat label="Price">{priceEth}</Stat>
-              <Stat label="Max supply">
-                {a.permit.maxSupply === '0' ? '∞' : a.permit.maxSupply}
-              </Stat>
+              <Stat label="Max supply">∞</Stat>
               <Stat label="Mints">
                 <MintCount articleId={a.articleId} />
               </Stat>

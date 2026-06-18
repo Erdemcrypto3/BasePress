@@ -24,12 +24,11 @@ export type ArticleListItem = {
   hidden?: boolean;
 };
 
+// Refs: P001-PAI-0051 | P001-PAI-0053 — V4 permit reduced to 3 fields
+// (price hardcoded in contract, supply unlimited, contentURI off-chain only).
 export type MintPermit = {
   articleId: `0x${string}`;
-  contentURI: string;
   author: `0x${string}`;
-  price: string;       // wei as decimal string for JSON safety
-  maxSupply: string;
   deadline: number;
 };
 

@@ -12,7 +12,7 @@ import HorizontalRule from '@tiptap/extension-horizontal-rule';
 import CharacterCount from '@tiptap/extension-character-count';
 import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
-import { parseEther, type Address } from 'viem';
+import { type Address } from 'viem';
 import { useAccount, useSignTypedData, useSwitchChain } from '@basepress/wallet';
 import { SUPPORTED_CHAINS } from '@basepress/chain';
 import {
@@ -20,7 +20,6 @@ import {
   MINT_PERMIT_TYPES,
   PERMIT_DOMAIN_NAME,
   PERMIT_DOMAIN_VERSION,
-  API_URL,
 } from '../../lib/contract';
 import { deriveArticleId } from '../../lib/permit';
 import { sanitizeHtml } from '../../lib/sanitize';
@@ -339,19 +338,14 @@ export function WriteArticle({ session, onPublished }: Props) {
     setBusy(true);
     try {
       const articleId = deriveArticleId({ author: address, slug: finalSlug });
-      const contentURI = `${API_URL}/file/articles/${articleId}/body.html`;
       const sanitizedBody = sanitizeHtml(editor.getHTML());
 
-      const price = parseEther(priceEth || '0');
-      const max = BigInt(maxSupply || '0');
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 365 * 24 * 60 * 60);
 
+      // Refs: P001-PAI-0051 | P001-PAI-0053 — V4 permit: articleId, author, deadline only.
       const message = {
         articleId,
-        contentURI,
         author: address as Address,
-        price,
-        maxSupply: max,
         deadline,
       } as const;
 
@@ -399,10 +393,7 @@ export function WriteArticle({ session, onPublished }: Props) {
         coverImage: coverUrl ?? undefined,
         permit: {
           articleId,
-          contentURI,
           author: address as `0x${string}`,
-          price: price.toString(),
-          maxSupply: max.toString(),
           deadline: Number(deadline),
         },
         signatures,

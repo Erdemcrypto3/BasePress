@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { formatEther } from 'viem';
+import { formatEther, parseEther } from 'viem';
 import {
   useAccount,
   useChainId,
@@ -12,7 +12,7 @@ import {
 } from '@basepress/wallet';
 import { SUPPORTED_CHAINS } from '@basepress/chain';
 import type { ArticleListItem } from '../lib/api';
-import { BASEPRESS_ABI, getContractAddress } from '../lib/contract';
+import { BASEPRESS_ABI, MINT_PRICE, getContractAddress } from '../lib/contract';
 
 type Props = { article: ArticleListItem };
 
@@ -50,8 +50,8 @@ export function MintCard({ article }: Props) {
     [article.signatures, selectedChain],
   );
 
-  const priceWei = useMemo(() => BigInt(article.permit.price || '0'), [article.permit.price]);
-  const maxSupply = article.permit.maxSupply;
+  // Refs: P001-PAI-0051 — V4 mint price is a contract constant, supply unlimited.
+  const priceWei = useMemo(() => parseEther(MINT_PRICE.toString()), []);
 
   // On-chain reads — supply minted so far on the selected chain.
   const { data: mintedSoFar, refetch: refetchSupply } = useReadContract({
@@ -122,10 +122,7 @@ export function MintCard({ article }: Props) {
       args: [
         {
           articleId: article.articleId,
-          contentURI: article.permit.contentURI,
           author: article.permit.author,
-          price: priceWei,
-          maxSupply: BigInt(maxSupply || '0'),
           deadline: BigInt(article.permit.deadline || 0),
         },
         signatureForChain,
@@ -136,8 +133,7 @@ export function MintCard({ article }: Props) {
 
   const supplyLabel = (() => {
     if (mintedSoFar === undefined) return '—';
-    const total = maxSupply === '0' ? '∞' : maxSupply;
-    return `${mintedSoFar.toString()} / ${total}`;
+    return `${mintedSoFar.toString()} / ∞`;
   })();
 
   const errorMsg = writeError
