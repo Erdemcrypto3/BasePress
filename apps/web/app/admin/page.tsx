@@ -18,6 +18,13 @@ export default function AdminPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10 sm:py-16">
+      {/* Refs: P001-T-0018 — back to the public site (home has an "Admin →" button). */}
+      <a
+        href="/"
+        className="mb-6 inline-flex items-center gap-1 text-sm font-medium text-base-500 hover:text-base-700"
+      >
+        ← Back to site
+      </a>
       <header className="mb-10 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-base-900">
